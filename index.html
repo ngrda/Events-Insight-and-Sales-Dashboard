@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moonlight Movies · Weekly Sales</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-shell">
+
+    <aside class="week-panel">
+        <div class="week-panel-header">
+            <div class="brand">
+                <div class="brand-mark"></div>
+                <div>
+                    <p class="brand-name">Moonlight Movies</p>
+                    <p class="brand-sub">Weekly Reports</p>
+                </div>
+            </div>
+            <button id="btn-refresh" class="btn-icon" title="Refresh weeks">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+            </button>
+        </div>
+
+        <button id="btn-overview" class="overview-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+            <span>Overall Weeks</span>
+        </button>
+
+        <p class="panel-label">Reporting Periods</p>
+        <div id="week-list" class="week-list">
+            <div class="week-skeleton"></div>
+            <div class="week-skeleton"></div>
+            <div class="week-skeleton"></div>
+        </div>
+
+        <div class="week-panel-footer">
+            <a id="download-all" href="/api/export/all/csv" class="btn-ghost btn-block">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export all weeks
+            </a>
+            <p id="sync-status" class="sync-line">Manual sync mode active</p>
+        </div>
+    </aside>
+
+    <main class="main-panel">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow" id="week-eyebrow">Select a week</p>
+                <h1 class="page-title">Sales Report</h1>
+            </div>
+            <div class="header-actions">
+                <span id="week-badge" class="chip chip-muted">—</span>
+                <span id="temp-badge" class="chip chip-muted hidden">—</span>
+                <div class="divider-v"></div>
+                <a id="dl-csv" href="#" class="btn-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    CSV
+                </a>
+                <a id="dl-json" href="#" class="btn-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    JSON
+                </a>
+            </div>
+        </header>
+
+        <div id="empty-state" class="empty-state hidden">
+            <p>No reporting weeks found.</p>
+            <p class="text-muted">Add a new row to the CSV files and refresh.</p>
+        </div>
+
+        <div id="overview-dashboard" class="dashboard hidden">
+            <section class="kpi-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 flex-shrink-0">
+                <article class="kpi-card kpi-primary" id="ov-card-revenue">
+                    <p class="kpi-label">Total Revenue (All Weeks)</p>
+                    <p class="kpi-value" id="ov-kpi-revenue">$0.00</p>
+                    <p class="kpi-delta">
+                        <span class="delta-context" id="ov-kpi-avg">— avg / week</span>
+                    </p>
+                </article>
+                <article class="kpi-card" id="ov-card-orders">
+                    <p class="kpi-label">Total Orders</p>
+                    <p class="kpi-value" id="ov-kpi-orders">0</p>
+                </article>
+                <article class="kpi-card" id="ov-card-customers">
+                    <p class="kpi-label">Total Attendance</p>
+                    <p class="kpi-value" id="ov-kpi-customers">0</p>
+                </article>
+                <article class="kpi-card" id="ov-card-avgspend">
+                    <p class="kpi-label">Avg Spend / Person</p>
+                    <p class="kpi-value" id="ov-kpi-avgspend">$0.00</p>
+                </article>
+                <article class="kpi-card border border-[rgba(52,211,153,0.15)]" id="ov-card-bestweek">
+                    <p class="kpi-label text-[#34d399] font-medium uppercase tracking-wider" id="ov-card-bestweek-label">Best Week</p>
+                    <p class="kpi-value kpi-value-sm text-lg text-[#fafafa]" id="ov-kpi-best-week">—</p>
+                    <p class="kpi-delta"><span class="delta-context text-xs text-[#71717a]" id="ov-kpi-best-week-revenue">$0.00 peak</span></p>
+                </article>
+                <article class="kpi-card border border-[rgba(248,113,113,0.15)]" id="ov-card-lowestweek">
+                    <p class="kpi-label text-[#f87171] font-medium uppercase tracking-wider" id="ov-card-lowestweek-label">Weakest Week</p>
+                    <p class="kpi-value kpi-value-sm text-lg text-[#fafafa]" id="ov-kpi-lowest-week">—</p>
+                    <p class="kpi-delta"><span class="delta-context text-xs text-[#71717a]" id="ov-kpi-lowest-week-revenue">$0.00 valley</span></p>
+                </article>
+            </section>
+
+
+            <section class="chart-grid" id="ov-top-row">
+                <article class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2 class="panel-title" id="attendance-chart-title">Attendees</h2>
+                            <p class="panel-sub" id="attendance-chart-sub">Attendance &amp; orders across every reporting week</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrap chart-bar">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </article>
+
+                <section class="panel revenue-category-panel clickable-kpi" id="btn-revenue-category" title="Click to view full category breakdown">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title">Revenue by Category</h2>
+                                <p class="panel-sub">Full breakdown — Others split into Nee-Dohs, Pop-A-Shot, Candy, Raffle Tickets &amp; Chairs</p>
+                            </div>
+                        </div>
+                        <div class="tp-category-layout category-legend-fix">
+                            <div class="chart-wrap chart-donut chart-donut-sm">
+                                <canvas id="tpCategoryChart"></canvas>
+                                <div class="donut-label">
+                                    <span id="tp-category-center" class="donut-value">—</span>
+                                    <span class="donut-caption">Revenue</span>
+                                </div>
+                            </div>
+                            <div class="ov-legend-sidebar" id="tp-category-legend"></div>
+                        </div>
+                    </section>
+            </section>
+
+            <section class="bottom-grid">
+                <article class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2 class="panel-title" id="spend-chart-title">Spend per Attendee</h2>
+                            <p class="panel-sub" id="spend-chart-sub">Average spend per attendee across every reporting week</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrap chart-line" id="spend-trend-wrap">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                    <div class="chart-wrap chart-bar-tall hidden" id="units-category-wrap">
+                        <canvas id="unitsCategoryChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-head">
+                        <h2 class="panel-title">Top Selling Beverages</h2>
+                        <button class="panel-meta panel-meta-link" id="ov-product-count">0 items</button>
+                    </div>
+                    <div id="ov-products-list" class="products-list">
+                        <p class="text-muted text-sm">Loading…</p>
+                    </div>
+                </article>
+            </section>
+
+        </div>
+
+        <div id="analytics-dashboard" class="dashboard hidden">
+    <div class="products-page-head">
+        <button id="btn-analytics-back" class="btn-ghost">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Overview
+        </button>
+        <div>
+            <p class="eyebrow" id="analytics-eyebrow">All Weeks · Deep Analytics</p>
+            <h2 class="products-page-title">Overall Performance Summary</h2>
+        </div>
+        <a id="analytics-export-csv" href="#" class="btn-outline ml-auto">Export CSV Ledger</a>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
+        
+        <div class="flex-1 flex flex-col gap-4 min-w-0">
+            <article class="panel flex-1 min-h-[320px]">
+                <div class="panel-head">
+                    <div>
+                        <h2 class="panel-title">Attendance vs Orders</h2>
+                        <p class="panel-sub" id="an-attendance-orders-sub">Weekly comparison across all periods</p>
+                    </div>
+                </div>
+                <div class="chart-wrap flex-1 min-h-0">
+                    <canvas id="analyticsAttendanceOrdersChart"></canvas>
+                </div>
+            </article>
+
+            <article class="panel flex-1 min-h-[300px]">
+                <div class="panel-head">
+                    <h2 class="panel-title">Weekly Summary Table</h2>
+                </div>
+                <div class="table-wrap flex-1 min-h-0 overflow-y-auto">
+                    <table class="data-table" id="weekly-summary-table">
+                        <thead>
+                            <tr>
+                                <th>Week</th>
+                                <th>Date</th>
+                                <th>Revenue</th>
+                                <th>Orders</th>
+                                <th>Attendance</th>
+                                <th>$/Person</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+
+        <div class="w-full lg:w-[380px] xl:w-[440px] flex flex-col gap-4 flex-shrink-0">
+            <div class="grid grid-cols-2 gap-3 flex-shrink-0">
+                <article class="kpi-card !min-h-0 py-4 px-5">
+                    <p class="kpi-label text-zinc-400">Total Attendance</p>
+                    <p class="kpi-value text-xl font-bold mt-1" id="an-kpi-attendance">0</p>
+                </article>
+                <article class="kpi-card !min-h-0 py-4 px-5">
+                    <p class="kpi-label text-zinc-400">Avg Spend / Person</p>
+                    <p class="kpi-value text-xl font-bold mt-1" id="an-kpi-avgspend">$0.00</p>
+                </article>
+                <article class="kpi-card !min-h-0 py-4 px-5">
+                    <p class="kpi-label text-zinc-400">Total Orders</p>
+                    <p class="kpi-value text-xl font-bold mt-1" id="an-kpi-orders">0</p>
+                </article>
+                <article class="kpi-card !min-h-0 py-4 px-5">
+                    <p class="kpi-label text-zinc-400">Products Sold</p>
+                    <p class="kpi-value text-xl font-bold mt-1" id="an-kpi-units">0</p>
+                </article>
+            </div>
+
+            <article class="panel flex-1 min-h-[320px]">
+                <div class="panel-head">
+                    <div>
+                        <h2 class="panel-title">Spend per Attendee Profile</h2>
+                        <p class="panel-sub" id="an-capita-spend-sub">Average financial matrix week-by-week</p>
+                    </div>
+                </div>
+                <div class="chart-wrap flex-1 min-h-0">
+                    <canvas id="analyticsCapitaSpendChart"></canvas>
+                </div>
+            </article>
+        </div>
+
+    </div>
+</div>
+        <div id="dashboard" class="dashboard hidden">
+            <section class="kpi-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <article class="kpi-card kpi-primary">
+                    <p class="kpi-label">Net Revenue</p>
+                    <p class="kpi-value" id="kpi-revenue">$0.00</p>
+                    <p class="kpi-delta" id="kpi-growth">
+                        <span class="delta-value">—</span>
+                        <span class="delta-context">vs previous week</span>
+                    </p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Total Orders</p>
+                    <p class="kpi-value" id="kpi-orders">0</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Attendance</p>
+                    <p class="kpi-value" id="kpi-customers">0</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Avg Spend / Attendee</p>
+                    <p class="kpi-value" id="kpi-avg-spend">$0.00</p>
+                </article>
+            </section>
+
+            <section class="chart-grid">
+                <article class="panel panel-wide">
+                    <div class="panel-head">
+                        <div>
+                            <h2 class="panel-title">Revenue Breakdown</h2>
+                            <p class="panel-sub">Distribution by product category</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrap chart-bar">
+                        <canvas id="breakdownChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2 class="panel-title">Total Products Sold</h2>
+                            <p class="panel-sub">Share of total units sold this week</p>
+                        </div>
+                    </div>
+                    <div class="tp-category-layout">
+                        <div class="chart-wrap chart-donut flex-1 h-full max-w-[58%]">
+                            <canvas id="mixChart"></canvas>
+                            <div class="donut-label">
+                                <span id="mix-center" class="donut-value">—</span>
+                                <span class="donut-caption">Units</span>
+                            </div>
+                        </div>
+                        <div class="ov-legend-sidebar" id="mix-legend"></div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="bottom-grid">
+                <article class="panel">
+                    <div class="panel-head">
+                        <h2 class="panel-title">Order Report</h2>
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Orders</span>
+                            <span class="stat-value" id="stat-orders">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Product Units</span>
+                            <span class="stat-value" id="stat-units">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Popcorn Spend Per Person</span>
+                            <span class="stat-value" id="stat-popcorn-spend">$0.00</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Popcorn Units</span>
+                            <span class="stat-value" id="stat-popcorn">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Snowcones Units</span>
+                            <span class="stat-value" id="stat-snowcones">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Snowcone Spend Per Person</span>
+                            <span class="stat-value" id="stat-snowcone-spend">$0.00</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-head">
+                        <h2 class="panel-title">Top Selling Beverages</h2>
+                        <button class="panel-meta panel-meta-link" id="product-count">0 items</button>
+                    </div>
+                    <div id="products-list" class="products-list">
+                        <p class="text-muted text-sm">Loading…</p>
+                    </div>
+                </article>
+            </section>
+        </div>
+
+        <div id="products-dashboard" class="dashboard hidden">
+            <div class="products-page-head">
+                <button id="btn-products-back" class="btn-ghost">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    Back
+                </button>
+                <div>
+                    <p class="eyebrow" id="products-scope-label">All Weeks</p>
+                    <h2 class="products-page-title">All Beverages Sold</h2>
+                </div>
+                <div class="header-actions ml-auto">
+                    <a id="pp-dl-csv" href="#" class="btn-outline">CSV</a>
+                    <a id="pp-dl-json" href="#" class="btn-outline">JSON</a>
+                </div>
+            </div>
+
+            <div class="products-layout">
+                <div class="products-left-column">
+                    <section class="panel products-table-panel">
+                        <div class="panel-head">
+                            <h2 class="panel-title">Full Beverages Table</h2>
+                            <span class="panel-meta" id="pp-product-count">0 items</span>
+                        </div>
+
+                        <div class="table-wrap table-wrap-tall">
+                            <table class="data-table" id="products-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th data-sort="name">Product</th>
+                                        <th data-sort="price">Price</th>
+                                        <th data-sort="units">Sold</th>
+                                        <th data-sort="revenue">Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="products-right-column">
+                    <aside class="products-summary">
+                        <article class="kpi-card kpi-primary">
+                            <p class="kpi-label">Beverage Revenue</p>
+                            <p class="kpi-value" id="pp-kpi-revenue">$0.00</p>
+
+                        </article>
+
+                        <article class="kpi-card">
+                            <p class="kpi-label">Units Sold</p>
+                            <p class="kpi-value" id="pp-kpi-units">0</p>
+                        </article>
+
+                        <article class="kpi-card">
+                            <p class="kpi-label">Best Seller</p>
+                            <p class="kpi-value kpi-value-sm" id="pp-kpi-best">—</p>
+                        </article>
+
+                        <article class="kpi-card">
+                            <p class="kpi-label">Active Flavors</p>
+                            <p class="kpi-value" id="pp-kpi-active">0</p>
+                        </article>
+                    </aside>
+
+                    <section class="panel products-chart-panel">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title">Most Popular (Units Sold)</h2>
+                                <p class="panel-sub">Top selling sodas</p>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrap chart-bar-tall">
+                            <canvas id="productsUnitsChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <div id="total-products-dashboard" class="dashboard hidden">
+            <div class="products-page-head">
+                <button id="btn-total-products-back" class="btn-ghost">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    Back
+                </button>
+                <div>
+                    <p class="eyebrow">All Weeks</p>
+                    <h2 class="products-page-title">Total Products Sold</h2>
+                </div>
+                <div class="header-actions ml-auto">
+                    <a id="tp-dl-csv" href="#" class="btn-outline">CSV</a>
+                    <a id="tp-dl-json" href="#" class="btn-outline">JSON</a>
+                </div>
+            </div>
+
+            <div class="products-layout">
+                <div class="products-left-column">
+                    <section class="panel products-table-panel">
+                        <div class="panel-head">
+                            <h2 class="panel-title">Products Sold</h2>
+                            <span class="panel-meta" id="tp-product-count">0 items</span>
+                        </div>
+                        <div class="table-wrap table-wrap-tall">
+                            <table class="data-table" id="total-products-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Week</th>
+                                        <th>Units Sold</th>
+                                        <th>Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="total-products-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <article class="panel clickable-kpi" id="btn-total-products" title="Click to view full breakdown">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title">Total Products Sold</h2>
+                                <p class="panel-sub">Share of total units sold (All Weeks)</p>
+                            </div>
+                        </div>
+                        <div class="tp-category-layout">
+                            <div class="tp-donut-area flex-1 h-full">
+                                <div class="chart-wrap chart-donut">
+                                    <canvas id="ovMixChart"></canvas>
+                                    <div class="donut-label">
+                                        <span id="ov-mix-center" class="donut-value">—</span>
+                                        <span class="donut-caption">Units</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ov-legend-sidebar" id="ov-mix-legend"></div>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="products-right-column">
+                    <aside class="products-summary">
+                        <article class="kpi-card kpi-primary">
+                            <p class="kpi-label">Total Products Revenue</p>
+                            <p class="kpi-value" id="tp-kpi-revenue">$0.00</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Best Seller · Revenue</p>
+                            <p class="kpi-value kpi-value-sm" id="tp-kpi-best-revenue">—</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Units Sold</p>
+                            <p class="kpi-value" id="tp-kpi-units">0</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Worst Seller · Revenue</p>
+                            <p class="kpi-value kpi-value-sm" id="tp-kpi-worst-revenue">—</p>
+                        </article>
+                    </aside>
+
+                    <section class="panel products-chart-panel">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title">Products Sold by Week</h2>
+                                <p class="panel-sub">Weekly units sold</p>
+                            </div>
+                        </div>
+                        <div class="chart-wrap chart-bar-tall">
+                            <canvas id="totalProductsChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <div id="products-overview-dashboard" class="dashboard hidden">
+            <div class="products-page-head">
+                <button id="btn-products-overview-back" class="btn-ghost">← Back</button>
+                <div>
+                    <p class="eyebrow">All Weeks</p>
+                    <h2 class="products-page-title">Products Overview</h2>
+                </div>
+            </div>
+
+            <section class="kpi-grid">
+                <article class="kpi-card kpi-primary">
+                    <p class="kpi-label">Total Revenue</p>
+                    <p class="kpi-value" id="po-kpi-revenue">$0.00</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Total Units</p>
+                    <p class="kpi-value" id="po-kpi-units">0</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Best by Units</p>
+                    <p class="kpi-value kpi-value-sm" id="po-kpi-best-units">—</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Best by Revenue</p>
+                    <p class="kpi-value kpi-value-sm" id="po-kpi-best-revenue">—</p>
+                </article>
+            </section>
+
+            <section class="chart-grid">
+                <article class="panel">
+                    <div class="panel-head">
+                        <h2 class="panel-title">Units by Product</h2>
+                    </div>
+                    <div class="chart-wrap chart-bar-tall">
+                        <canvas id="productsOverviewUnitsChart"></canvas>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-head">
+                        <h2 class="panel-title">Revenue by Product</h2>
+                    </div>
+                    <div class="chart-wrap chart-bar-tall">
+                        <canvas id="productsOverviewRevenueChart"></canvas>
+                    </div>
+                </article>
+            </section>
+        </div>
+
+        <div id="category-dashboard" class="dashboard hidden">
+            <div class="products-page-head">
+                <button id="btn-category-back" class="btn-ghost">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    Back
+                </button>
+                <div>
+                    <p class="eyebrow" id="category-eyebrow">All Weeks</p>
+                    <h2 class="products-page-title">Total Sales</h2>
+                </div>
+            </div>
+
+            <section class="kpi-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <article class="kpi-card kpi-primary">
+                    <p class="kpi-label">Total Revenue</p>
+                    <p class="kpi-value" id="cat-kpi-revenue">$0.00</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Units Sold</p>
+                    <p class="kpi-value" id="cat-kpi-units">0</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Best Seller</p>
+                    <p class="kpi-value kpi-value-sm" id="cat-kpi-best">—</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Worst Seller</p>
+                    <p class="kpi-value kpi-value-sm" id="cat-kpi-worst">—</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Spent per Customer</p>
+                    <p class="kpi-value" id="cat-kpi-spend">$0.00</p>
+                </article>
+            </section>
+
+            <div class="products-layout">
+                <div class="products-left-column">
+                    <section class="panel products-table-panel">
+                        <div class="panel-head">
+                            <h2 class="panel-title">Products by Category</h2>
+                            <span class="panel-meta" id="category-product-count">0 categories</span>
+                        </div>
+                        <div class="table-wrap table-wrap-tall">
+                            <table class="data-table" id="category-products-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Category</th>
+                                        <th>Units</th>
+                                        <th>Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="category-products-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="products-right-column">
+                    <section class="panel products-chart-panel">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title">Units by Category</h2>
+                                <p class="panel-sub">Total units sold per category (All Weeks)</p>
+                            </div>
+                        </div>
+                        <div class="tp-category-layout category-legend-fix">
+                            <div class="chart-wrap chart-donut">
+                                <canvas id="categoryUnitsChart"></canvas>
+                                <div class="donut-label">
+                                    <span id="category-units-center" class="donut-value">—</span>
+                                    <span class="donut-caption">Units</span>
+                                </div>
+                            </div>
+                            <div class="ov-legend-sidebar" id="category-units-legend"></div>
+                        </div>
+                    </section>
+
+                    <section class="panel products-chart-panel">
+                        <div class="panel-head">
+                            <div>
+                                <h2 class="panel-title" id="category-revenue-chart-title">Revenue by Week</h2>
+                                <p class="panel-sub" id="category-revenue-chart-sub">Product revenue across every reporting week</p>
+                            </div>
+                        </div>
+                        <div class="chart-wrap chart-bar-tall">
+                            <canvas id="categoryRevenueByWeekChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div>
+                    <h3 id="modal-title" class="modal-title">Details</h3>
+                    <p id="modal-subtitle" class="modal-subtitle"></p>
+                </div>
+                <button id="modal-close" class="btn-icon" title="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
