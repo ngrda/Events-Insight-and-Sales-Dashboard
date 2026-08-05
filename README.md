@@ -92,37 +92,3 @@ each change in revenue: what was tried, which new techniques or
 changes were applied (pricing, placement, promotions, weather, etc.),
 and how they impacted sales — giving real context behind every number
 that isn't included here.
-
-## Deploying to Render
-
-The repo already includes what Render needs: `Procfile`, `render.yaml`,
-`runtime.txt`, and `gunicorn` in `requirements.txt`.
-
-1. Push this project to a GitHub (or GitLab) repo, with `data/`
-   (including the two CSVs) committed — it's not in `.gitignore`, so a
-   normal `git add .` will include it.
-2. On [render.com](https://render.com), click **New +** → **Blueprint**,
-   and point it at your repo. Render will read `render.yaml` and
-   configure everything automatically (build command, start command,
-   Python version from `runtime.txt`).
-   - If you'd rather set it up by hand instead of using the Blueprint:
-     **New +** → **Web Service** → your repo → Environment: `Python 3`
-     → Build Command: `pip install -r requirements.txt` → Start
-     Command: `gunicorn app:app --bind 0.0.0.0:$PORT`.
-3. Deploy. Render gives you a public URL.
-
-**Important caveat about editing your data once it's deployed:**
-locally, "edit the CSV, save, refresh the browser" works because
-`app.py` reads the files straight off disk. On Render's free tier, the
-filesystem is ephemeral — any change you make to the CSVs *after*
-deploying (e.g. uploading a new version through some other means) will
-be lost the next time the service restarts or redeploys. In practice
-this means:
-
-- To add new weeks, edit the CSVs locally, commit, and push — Render
-  will redeploy with the updated data.
-- If you want to edit the CSVs directly on the live site without a git
-  push each time, you'd need a persistent disk (a paid Render feature)
-  mounted at the app's directory, or switch to a small database
-  instead of CSV. Not needed for personal/demo use, but worth knowing
-  before you rely on the deployed version as your daily entry point.
