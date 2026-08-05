@@ -149,7 +149,7 @@ def build_week_payload(global_row, indi_row, index, prev_global_row=None):
     # Nee-Dohs, Candy) - NOT the "Others" $ column, which is a revenue total.
     others_chairs_units = int(to_float(global_row.get("Chairs", 0)))
     others_pop_a_shot_units = int(to_float(global_row.get("Pop-a-shot", 0)))
-    others_raffle_units = int(to_float(global_row.get("Raffle Tickets", 0)))
+    others_raffle_units = int(to_float(global_row.get("Raffle-Tickets", 0)))
     others_nee_dohs_units = int(to_float(global_row.get("Nee-Dohs", 0)))
     others_candy_units = int(to_float(global_row.get("Candy", 0)))
     others_units = (others_chairs_units + others_pop_a_shot_units + others_raffle_units
@@ -176,7 +176,7 @@ def build_week_payload(global_row, indi_row, index, prev_global_row=None):
     others_breakdown = {
         "chairs": round(to_float(global_row.get("Chairs Sale", 0)), 2),
         "pop_a_shot": round(to_float(global_row.get("Pop-A-Shot Sales", 0)), 2),
-        "raffle_tickets": round(to_float(global_row.get("Raffle Tickets Sales", 0)), 2),
+        "raffle_tickets": round(to_float(global_row.get("Raffle-Tickets Sales", 0)), 2),
         "nee_dohs": round(to_float(global_row.get("Nee-Dohs Sale", 0)), 2),
         "candy": round(to_float(global_row.get("Candy Sales", 0)), 2),
     }
@@ -240,7 +240,7 @@ def build_week_payload(global_row, indi_row, index, prev_global_row=None):
             "total_snowcones": int(to_float(global_row["Snowcones"])),
             "total_chairs": int(to_float(global_row.get("Chairs", 0))),
             "total_pop_a_shot": int(to_float(global_row.get("Pop-a-shot", 0))),
-            "total_raffle_tickets": int(to_float(global_row.get("Raffle Tickets", 0))),
+            "total_raffle_tickets": int(to_float(global_row.get("Raffle-Tickets", 0))),
             "total_nee_dohs": int(to_float(global_row.get("Nee-Dohs", 0))),
             "total_candy": int(to_float(global_row.get("Candy", 0))),
             "avg_spend_per_attendee": avg_spend,
