@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Every route reads through active_csv_path() below, which prefers the
 # uploaded file and falls back to the sample one.
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_data")
-DEFAULT_DIR = os.path.join(BASE_DIR, "default_data")
+DEFAULT_DIR = os.path.join(BASE_DIR, "data")
 EXPORT_DIR = os.path.join(BASE_DIR, "exports")
 GLOBAL_CSV = os.path.join(UPLOAD_DIR, "mlm_global.csv")
 INDI_CSV = os.path.join(UPLOAD_DIR, "mlm_indi.csv")
