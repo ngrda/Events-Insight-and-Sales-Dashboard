@@ -11,23 +11,48 @@ app = Flask(__name__, static_folder=".")
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Data now comes exclusively from what the user drags/uploads in the UI -
-# there is no bundled default dataset shipped with the app anymore. Both
-# CSVs live here once uploaded, and every route reads from these two paths.
+# Two tiers of data:
+#  - uploaded_data/  : whatever the visitor drags/drops into the UI this run.
+#  - default_data/   : a bundled sample dataset shipped with the app, used
+#    only as a fallback so a first-time visitor who doesn't want to attach
+#    their own CSVs still sees a working dashboard instead of an empty state.
+# Every route reads through active_csv_path() below, which prefers the
+# uploaded file and falls back to the sample one.
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploaded_data")
+DEFAULT_DIR = os.path.join(BASE_DIR, "default_data")
 EXPORT_DIR = os.path.join(BASE_DIR, "exports")
 GLOBAL_CSV = os.path.join(UPLOAD_DIR, "mlm_global.csv")
 INDI_CSV = os.path.join(UPLOAD_DIR, "mlm_indi.csv")
+DEFAULT_GLOBAL_CSV = os.path.join(DEFAULT_DIR, "mlm_global.csv")
+DEFAULT_INDI_CSV = os.path.join(DEFAULT_DIR, "mlm_indi.csv")
 
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Every time the server (re)starts, wipe any CSVs left over from a previous
 # run - the user must drag in fresh files each run rather than silently
-# picking up whatever was uploaded last time.
+# picking up whatever was uploaded last time. This does NOT touch
+# default_data/, which is a static asset shipped with the app, not something
+# a visitor uploaded.
 for _stale_path in (GLOBAL_CSV, INDI_CSV):
     if os.path.exists(_stale_path):
         os.remove(_stale_path)
+
+
+def is_using_default(kind):
+    """True if this dataset is currently falling back to the bundled sample
+    (i.e. the visitor hasn't uploaded their own file for it yet)."""
+    uploaded = GLOBAL_CSV if kind == "global" else INDI_CSV
+    return not os.path.exists(uploaded)
+
+
+def active_csv_path(kind):
+    """Path to actually read for this dataset: the visitor's own upload if
+    present, otherwise the bundled sample so the dashboard always has
+    something to show."""
+    uploaded = GLOBAL_CSV if kind == "global" else INDI_CSV
+    default = DEFAULT_GLOBAL_CSV if kind == "global" else DEFAULT_INDI_CSV
+    return uploaded if os.path.exists(uploaded) else default
 
 
 class DataNotAvailable(Exception):
@@ -121,12 +146,12 @@ def is_valid_day(day_value):
 
 def load_csv(path):
     if not os.path.exists(path):
-        kind = "Global" if path == GLOBAL_CSV else "Individual products"
+        kind = "Global" if path in (GLOBAL_CSV, DEFAULT_GLOBAL_CSV) else "Individual products"
         raise DataNotAvailable(f"{kind} CSV has not been uploaded yet")
     df = pd.read_csv(path, sep=";", encoding="latin-1")
     df = clean_columns(df)
     if "Day" not in df.columns:
-        kind = "Global" if path == GLOBAL_CSV else "Individual products"
+        kind = "Global" if path in (GLOBAL_CSV, DEFAULT_GLOBAL_CSV) else "Individual products"
         raise DataNotAvailable(f"{kind} CSV is missing a 'Day' column - check the file and re-upload")
     # Drop any row that doesn't have a real, parseable date in Day (e.g.
     # trailing blank lines some spreadsheet exports leave at the end of the
@@ -172,8 +197,8 @@ def growth_pct(current, previous):
 
 
 def load_merged():
-    global_df = load_csv(GLOBAL_CSV)
-    indi_df = load_csv(INDI_CSV)
+    global_df = load_csv(active_csv_path("global"))
+    indi_df = load_csv(active_csv_path("individual"))
 
     dynamic_cats = discover_dynamic_categories(global_df.columns)
 
@@ -324,7 +349,7 @@ def build_top_products(global_row, indi_row, dynamic_cats):
 
 def build_week_payload(global_row, indi_row, index, dynamic_cats, prev_global_row=None):
     revenue = to_float(global_row["Net Sales"])
-    prev_revenue = float(prev_global_row["Net Sales"]) if prev_global_row is not None else 0
+    prev_revenue = to_float(prev_global_row["Net Sales"]) if prev_global_row is not None else 0
 
     popcorn_units = int(to_float(global_row["Popcorn"]))
     snowcone_units = int(to_float(global_row["Snowcones"]))
@@ -857,17 +882,34 @@ def upload_data():
 
 
 
+@app.route("/api/use-default", methods=["POST"])
+def use_default():
+    """Explicitly discard any uploaded CSVs for this run, so the dashboard
+    falls back to the bundled sample dataset. Used by the 'View sample data'
+    choice on the landing gate, so it always shows the real sample - not
+    whatever a previous visitor happened to upload this session."""
+    for _path in (GLOBAL_CSV, INDI_CSV):
+        if os.path.exists(_path):
+            os.remove(_path)
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/status", methods=["GET"])
 def data_status():
     return jsonify({
         "global_uploaded": os.path.exists(GLOBAL_CSV),
         "individual_uploaded": os.path.exists(INDI_CSV),
+        # True while the dashboard is showing the bundled sample data because
+        # this visitor hasn't dropped in their own CSV for that side yet.
+        "using_default": is_using_default("global") or is_using_default("individual"),
+        "global_using_default": is_using_default("global"),
+        "individual_using_default": is_using_default("individual"),
     })
 
 
 @app.route("/api/overview", methods=["GET"])
 def get_overview():
-    if not os.path.exists(GLOBAL_CSV) or not os.path.exists(INDI_CSV):
+    if not os.path.exists(active_csv_path("global")) or not os.path.exists(active_csv_path("individual")):
         return jsonify({"error": "CSV files not found"}), 404
 
     all_weeks = get_all_weeks()
@@ -997,7 +1039,7 @@ def get_overview():
 
 @app.route("/api/categories", methods=["GET"])
 def get_categories():
-    if not os.path.exists(GLOBAL_CSV) or not os.path.exists(INDI_CSV):
+    if not os.path.exists(active_csv_path("global")) or not os.path.exists(active_csv_path("individual")):
         return jsonify({"error": "CSV files not found"}), 404
 
     all_weeks = get_all_weeks()
@@ -1061,7 +1103,7 @@ def get_categories():
 
 @app.route("/api/weeks", methods=["GET"])
 def list_weeks():
-    if not os.path.exists(GLOBAL_CSV) or not os.path.exists(INDI_CSV):
+    if not os.path.exists(active_csv_path("global")) or not os.path.exists(active_csv_path("individual")):
         return jsonify({"error": "CSV files not found"}), 404
 
     weeks = get_all_weeks()
@@ -1107,7 +1149,7 @@ def get_data_legacy():
 
 @app.route("/api/products", methods=["GET"])
 def get_products():
-    if not os.path.exists(GLOBAL_CSV) or not os.path.exists(INDI_CSV):
+    if not os.path.exists(active_csv_path("global")) or not os.path.exists(active_csv_path("individual")):
         return jsonify({"error": "CSV files not found"}), 404
 
     scope = request.args.get("week")
