@@ -13,6 +13,32 @@
 </head>
 <body class="app-shell">
 
+    <div id="app-gate" class="app-gate">
+        <div class="app-gate-card">
+            <div class="brand app-gate-brand">
+                <div class="brand-mark"></div>
+                <div>
+                    <p class="brand-name">Moonlight Movies</p>
+                    <p class="brand-sub">Weekly Reports</p>
+                </div>
+            </div>
+            <h1 class="app-gate-title">How do you want to view this dashboard?</h1>
+            <p class="app-gate-sub">Browse it with sample data, or upload your own CSVs first.</p>
+            <div class="app-gate-actions">
+                <button id="btn-gate-sample" class="app-gate-btn app-gate-btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+                    <span>View sample data</span>
+                </button>
+                <button id="btn-gate-upload" class="app-gate-btn app-gate-btn-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Upload my CSVs</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden">
+
     <aside class="week-panel">
         <div class="week-panel-header">
             <div class="brand">
@@ -53,6 +79,10 @@
     </aside>
 
     <main class="main-panel">
+        <div id="sample-data-banner" class="sample-data-banner hidden">
+            <span>You're viewing sample data.</span>
+            <button id="btn-banner-upload" class="sample-data-banner-btn">Upload your own CSVs</button>
+        </div>
         <header class="page-header">
             <div>
                 <p class="eyebrow" id="week-eyebrow">Select a week</p>
@@ -695,6 +725,8 @@
             </div>
         </div>
     </main>
+
+    </div>
 
     <div id="modal-overlay" class="modal-overlay hidden">
         <div class="modal-box">
