@@ -257,6 +257,7 @@ wireDropzone('dz-global-modal', 'file-global-modal', 'dz-global-modal-status', '
 wireDropzone('dz-indi-modal', 'file-indi-modal', 'dz-indi-modal-status', 'individual');
 
 bindIfExists('btn-upload', 'click', openUploadModal);
+bindIfExists('btn-banner-upload', 'click', openUploadModal);
 bindIfExists('upload-modal-close', 'click', closeUploadModal);
 bindIfExists('upload-modal-overlay', 'click', (e) => { if (e.target.id === 'upload-modal-overlay') closeUploadModal(); });
 
@@ -1296,7 +1297,23 @@ function showMainHeaderActions() {
     if (actions) actions.style.display = "flex";
 }
 
+async function updateSampleDataBanner() {
+    const banner = document.getElementById('sample-data-banner');
+    if (!banner) return;
+    try {
+        const res = await fetch(`${API}/api/status`);
+        if (!res.ok) return;
+        const status = await res.json();
+        banner.classList.toggle('hidden', !status.using_default);
+    } catch (e) {
+        // If /api/status is unreachable, leave the banner as-is rather than
+        // guessing - refresh()'s own error handling already surfaces a
+        // "Backend offline" state elsewhere.
+    }
+}
+
 async function refresh() {
+    updateSampleDataBanner();
     try {
         const res = await fetch(`${API}/api/weeks`);
         if (res.status === 404) {
@@ -1361,7 +1378,28 @@ document.querySelectorAll('#products-table th[data-sort]').forEach((th) => {
     });
 });
 
-window.selectWeek = selectWeek;
+function showAppContent() {
+    document.getElementById('app-gate').classList.add('hidden');
+    document.getElementById('app-content').classList.remove('hidden');
+}
 
-initCharts();
-refresh();
+bindIfExists('btn-gate-sample', 'click', async () => {
+    try {
+        await fetch(`${API}/api/use-default`, { method: 'POST' });
+    } catch (e) {
+        // If this fails the backend still falls back to the sample dataset
+        // on its own whenever nothing has been uploaded, so just proceed.
+    }
+    showAppContent();
+    initCharts();
+    refresh();
+});
+
+bindIfExists('btn-gate-upload', 'click', () => {
+    showAppContent();
+    initCharts();
+    refresh();
+    openUploadModal();
+});
+
+window.selectWeek = selectWeek;
