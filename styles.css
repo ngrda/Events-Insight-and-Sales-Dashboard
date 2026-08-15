@@ -54,6 +54,21 @@ body {
     overflow:hidden;
 }
 
+/* #app-content wraps BOTH .week-panel and .main-panel as a single child of
+   .app-shell, so the grid above only ever sees one item and drops it into
+   the first 240px column - leaving the second (1fr) column empty and the
+   whole main panel pushed out of view below the fold. Make #app-content
+   span both grid columns and lay its own two children out side by side. */
+#app-content{
+    display:flex;
+    grid-column:1 / -1;
+    width:100%;
+    height:100vh;
+    overflow:hidden;
+}
+#app-content .week-panel{ flex-shrink:0; }
+#app-content .main-panel{ flex:1; min-width:0; }
+
 /* ── Week sidebar ── */
 .week-panel{
 
