@@ -292,6 +292,7 @@ async function openProductsPage() {
     hideMainHeaderActions();
     document.getElementById('products-dashboard').classList.remove('hidden');
     await renderProductsPage();
+    requestAnimationFrame(forceChartsResize);
 }
 
 async function renderProductsOverviewPage() {
@@ -325,6 +326,7 @@ async function openTotalProductsPage() {
     hideMainHeaderActions();
     document.getElementById('total-products-dashboard').classList.remove('hidden');
     await renderTotalProductsPage();
+    requestAnimationFrame(forceChartsResize);
 }
 
 async function renderTotalProductsPage() {
@@ -433,6 +435,7 @@ async function openCategoryPage() {
     hideMainHeaderActions();
     document.getElementById('category-dashboard').classList.remove('hidden');
     await renderCategoryPage();
+    requestAnimationFrame(forceChartsResize);
 }
 
 function getCategoryScope() {
@@ -548,6 +551,7 @@ function openAnalyticsPage() {
     hideMainHeaderActions();
     document.getElementById('analytics-dashboard').classList.remove('hidden');
     renderAnalyticsPage();
+    requestAnimationFrame(forceChartsResize);
 }
 
 async function refreshAnalyticsData() {
@@ -681,6 +685,7 @@ async function openProductsOverviewPage() {
     hideMainHeaderActions();
     document.getElementById('products-overview-dashboard').classList.remove('hidden');
     await renderProductsOverviewPage();
+    requestAnimationFrame(forceChartsResize);
 }
 
 function openWeeksModal() {
@@ -1027,6 +1032,7 @@ async function loadOverview() {
     hideAllDashboards();
     document.getElementById('overview-dashboard').classList.remove('hidden');
     updateOverviewDataOnly(await res.json());
+    requestAnimationFrame(forceChartsResize);
 }
 
 function updateOverviewDataOnly(ov) {
@@ -1383,6 +1389,38 @@ function showAppContent() {
     document.getElementById('app-content').classList.remove('hidden');
 }
 
+// Chart.js sizes a chart from its canvas's on-screen box at creation time.
+// initCharts() runs right when app-content first becomes visible, but a few
+// dashboard sections (overview-dashboard, etc.) are still individually
+// hidden at that instant and only get unhidden a moment later inside
+// refresh()/loadOverview() (after their data fetch resolves). Some browsers
+// don't re-measure those canvases automatically once their container's
+// display flips from none to visible, leaving the chart stuck at 0x0. Forcing
+// a resize on every known chart instance after each reveal fixes that.
+function forceChartsResize() {
+    [
+        breakdownChart, mixChart, trendChart, ovMixChart, attendanceChart,
+        tpCategoryChart, unitsCategoryChart, productsUnitsChart,
+        analyticsAttendanceOrdersChart, analyticsCapitaSpendChart,
+        productsOverviewUnitsChart, productsOverviewRevenueChart,
+        totalProductsChart, categoryUnitsChart, categoryRevenueByWeekChart,
+    ].forEach((chart) => { if (chart) chart.resize(); });
+}
+
+let chartsInitialized = false;
+function ensureChartsInitialized() {
+    if (chartsInitialized) return;
+    initCharts();
+    chartsInitialized = true;
+}
+
+async function enterApp() {
+    showAppContent();
+    ensureChartsInitialized();
+    await refresh();
+    requestAnimationFrame(forceChartsResize);
+}
+
 bindIfExists('btn-gate-sample', 'click', async () => {
     try {
         await fetch(`${API}/api/use-default`, { method: 'POST' });
@@ -1390,15 +1428,11 @@ bindIfExists('btn-gate-sample', 'click', async () => {
         // If this fails the backend still falls back to the sample dataset
         // on its own whenever nothing has been uploaded, so just proceed.
     }
-    showAppContent();
-    initCharts();
-    refresh();
+    await enterApp();
 });
 
-bindIfExists('btn-gate-upload', 'click', () => {
-    showAppContent();
-    initCharts();
-    refresh();
+bindIfExists('btn-gate-upload', 'click', async () => {
+    await enterApp();
     openUploadModal();
 });
 
